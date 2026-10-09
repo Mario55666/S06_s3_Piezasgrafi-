@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Del archivo al pliego</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Concepto de maquetación: la página es un pliego de imprenta. Cada estación es una "forma" impuesta,
+   delimitada por marcas de corte; la tira de control CMYK funciona como barra de progreso. */
+:root{
+  /* Color — tokens de marca IDC + tintas de proceso como dato */
+  --papel:#f3f5f7;        /* fondo: blanco de pliego estucado, neutro con sesgo azul */
+  --hoja:#ffffff;         /* superficie de las formas */
+  --tinta:#1b2126;        /* texto principal */
+  --gris:#555553;         /* IDC Gris 1: texto secundario */
+  --gris2:#545452;        /* IDC Gris 2: marcas técnicas */
+  --linea:#d5dbe0;        /* filetes */
+  --azul:#0072b9;         /* IDC Azul: estructura, navegación */
+  --azul-suave:#e3eff8;
+  --amarillo:#f3a100;     /* IDC Amarillo: atención, acción, medallas */
+  --amarillo-suave:#fff3d9;
+  --sobre-amarillo:#1b2126;
+  --ok:#1f7a45; --ok-suave:#e4f3ea;
+  --aviso:#9a4b00; --aviso-suave:#fdeedd;
+  --c:#00a0e3; --m:#e6007e; --y:#ffe500; --k:#1d1d1b;
+  /* Tipografía */
+  --f-display:"Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-texto:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-dato:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Escala tipográfica 1.25 */
+  --t-xs:.8rem; --t-s:.9rem; --t-m:1.0625rem; --t-l:1.33rem; --t-xl:1.66rem; --t-xxl:clamp(2.1rem,6vw,3.6rem);
+  /* Espaciado */
+  --e1:.25rem; --e2:.5rem; --e3:.75rem; --e4:1rem; --e5:1.5rem; --e6:2rem; --e7:3rem;
+  --radio:4px;
+  --sombra:0 1px 2px rgba(27,33,38,.06),0 6px 18px rgba(27,33,38,.06);
+  --dur:180ms; --curva:cubic-bezier(.2,.7,.2,1);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --papel:#11161b; --hoja:#192028; --tinta:#e8ecef; --gris:#a7adb2; --gris2:#8b9196; --linea:#2c3540;
+  --azul:#4aa3e6; --azul-suave:#16293a; --amarillo:#f3a100; --amarillo-suave:#3a2a08; --sobre-amarillo:#1b2126;
+  --ok:#5fcf8c; --ok-suave:#13301f; --aviso:#f0a35a; --aviso-suave:#3a2410;
+  --sombra:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --papel:#11161b; --hoja:#192028; --tinta:#e8ecef; --gris:#a7adb2; --gris2:#8b9196; --linea:#2c3540;
+  --azul:#4aa3e6; --azul-suave:#16293a; --amarillo:#f3a100; --amarillo-suave:#3a2a08; --sobre-amarillo:#1b2126;
+  --ok:#5fcf8c; --ok-suave:#13301f; --aviso:#f0a35a; --aviso-suave:#3a2410;
+  --sombra:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--papel);color:var(--tinta);font-family:var(--f-texto);font-size:var(--t-m);line-height:1.6;padding-inline:16px;padding-block:0 var(--e7)}
+.marco{max-width:1080px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.1;text-wrap:balance;margin:0}
+h2{font-size:var(--t-xl);font-weight:800;font-stretch:112%}
+h3{font-size:var(--t-l);font-weight:700}
+p{margin:0}
+.rotulo{font-family:var(--f-dato);font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+.dato{font-family:var(--f-dato);font-variant-numeric:tabular-nums}
+button{font:inherit}
+:focus-visible{outline:3px solid var(--azul);outline-offset:2px}
+.btn{font-family:var(--f-display);font-weight:700;font-size:var(--t-s);letter-spacing:.02em;border:2px solid var(--tinta);background:var(--hoja);color:var(--tinta);padding:.55rem 1rem;border-radius:var(--radio);cursor:pointer;transition:transform var(--dur) var(--curva),background var(--dur)}
+.btn:hover{transform:translateY(-1px)}
+.btn-accion{background:var(--amarillo);border-color:var(--amarillo);color:var(--sobre-amarillo)}
+.btn-sec{border-color:var(--azul);color:var(--azul);background:transparent}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none}
+
+/* Cabecera institucional */
+.inst{display:flex;flex-wrap:wrap;gap:var(--e3) var(--e5);align-items:center;justify-content:space-between;padding-block:var(--e4);border-bottom:1px solid var(--linea)}
+.marca{display:flex;gap:var(--e3);align-items:center}
+.marca-idc{font-family:var(--f-display);font-weight:800;font-stretch:125%;font-size:1.35rem;letter-spacing:.02em;color:var(--azul)}
+.marca-idc span{color:var(--amarillo)}
+.marca small{display:block;font-family:var(--f-dato);font-size:.68rem;color:var(--gris);line-height:1.3;max-width:28ch}
+.nav{display:flex;flex-wrap:wrap;gap:var(--e2)}
+.nav a{font-family:var(--f-dato);font-size:var(--t-xs);color:var(--azul);text-decoration:none;border:1px solid var(--linea);padding:.3rem .55rem;border-radius:var(--radio)}
+.nav a:hover{border-color:var(--azul)}
+
+/* Héroe: pliego impuesto */
+.heroe{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:var(--e6);align-items:center;padding-block:var(--e6)}
+.heroe h1{font-size:var(--t-xxl);font-weight:800;font-stretch:118%;letter-spacing:-.01em}
+.heroe h1 em{font-style:normal;color:var(--azul)}
+.heroe .bajada{font-size:var(--t-l);margin-top:var(--e4);max-width:38ch}
+.mision{margin-top:var(--e5);display:grid;gap:var(--e2);font-size:var(--t-s)}
+.mision div{display:flex;gap:var(--e3)}
+.mision b{font-family:var(--f-dato);font-weight:600;color:var(--azul);min-width:9ch}
+.pliego-fig{width:100%;max-width:100%;height:auto;display:block}
+.pliego-fig .hoja-f{fill:var(--hoja);stroke:var(--linea)}
+svg .forma{fill:var(--azul-suave);stroke:var(--azul);stroke-width:1}
+svg .sangre{fill:none;stroke:var(--m);stroke-dasharray:3 3;stroke-width:.8}
+svg .corte{stroke:var(--tinta);stroke-width:1}
+svg .t-forma{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--azul)}
+.pliego-fig text{font-family:var(--f-dato);font-size:10px;fill:var(--gris)}
+.pliego-fig .t-forma{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--azul)}
+
+/* Tira de control = progreso */
+.control{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--papel);padding-block:var(--e3);border-block:1px solid var(--linea);display:flex;flex-wrap:wrap;gap:var(--e3);align-items:center;justify-content:space-between}
+.parches{display:flex;gap:3px}
+.parche{width:30px;height:18px;border:1px solid var(--gris2);background:transparent;position:relative}
+.parche.lleno[data-t="c"]{background:var(--c)} .parche.lleno[data-t="m"]{background:var(--m)}
+.parche.lleno[data-t="y"]{background:var(--y)} .parche.lleno[data-t="k"]{background:var(--k)}
+.parche.lleno[data-t="r"]{background:repeating-linear-gradient(90deg,var(--c) 0 25%,var(--m) 25% 50%,var(--y) 50% 75%,var(--k) 75% 100%)}
+.progreso-txt{font-family:var(--f-dato);font-size:var(--t-xs);color:var(--gris)}
+.medallas{display:flex;gap:var(--e2);flex-wrap:wrap}
+.medalla{font-family:var(--f-dato);font-size:.7rem;border:1px dashed var(--gris2);color:var(--gris);padding:.15rem .45rem;border-radius:99px}
+.medalla.ok{border-style:solid;border-color:var(--amarillo);background:var(--amarillo-suave);color:var(--tinta)}
+
+/* Ficha MPI-DUAE */
+.ficha{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--linea);border:1px solid var(--linea);margin-block:var(--e5)}
+.ficha div{background:var(--hoja);padding:var(--e3) var(--e4);min-width:0}
+.ficha p{font-size:var(--t-s)}
+
+/* Estaciones como formas con marcas de corte */
+.estacion{position:relative;background:var(--hoja);padding:clamp(1.1rem,3vw,2.2rem);margin-top:var(--e7);box-shadow:var(--sombra)}
+.estacion::before,.estacion::after{content:"";position:absolute;width:18px;height:18px;border-color:var(--gris2);border-style:solid;pointer-events:none}
+.estacion::before{top:-10px;left:-10px;border-width:0 1px 1px 0}
+.estacion::after{bottom:-10px;right:-10px;border-width:1px 0 0 1px}
+.est-cab{display:flex;flex-wrap:wrap;gap:var(--e2) var(--e4);align-items:baseline;justify-content:space-between;margin-bottom:var(--e4)}
+.fase{font-family:var(--f-dato);font-size:var(--t-xs);background:var(--azul-suave);color:var(--azul);padding:.15rem .5rem;border-radius:var(--radio)}
+.consigna{max-width:65ch;margin-bottom:var(--e5)}
+.consigna strong{font-family:var(--f-display);font-weight:700}
+
+/* Caso */
+.caso{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--e5);border:1px solid var(--linea);padding:var(--e4);margin-bottom:var(--e5)}
+.orden-trabajo{font-family:var(--f-dato);font-size:var(--t-s)}
+.orden-trabajo dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem var(--e4);margin:var(--e2) 0 0}
+.orden-trabajo dt{color:var(--gris)}
+.orden-trabajo dd{margin:0}
+
+/* Ordenar tarjetas (E1) */
+.lista-orden{list-style:none;margin:0;padding:0;display:grid;gap:var(--e2)}
+.item-orden{display:grid;grid-template-columns:2.2rem minmax(0,1fr) auto;gap:var(--e3);align-items:center;border:1px solid var(--linea);background:var(--papel);padding:var(--e2) var(--e3);border-radius:var(--radio)}
+.item-orden .n{font-family:var(--f-display);font-weight:800;font-size:1.3rem;color:var(--azul);text-align:center}
+.flechas{display:flex;gap:var(--e1)}
+.flechas button{width:2.2rem;height:2.2rem;border:1px solid var(--linea);background:var(--hoja);color:var(--tinta);border-radius:var(--radio);cursor:pointer}
+.flechas button:hover{border-color:var(--azul)}
+.campo{display:grid;gap:var(--e1);margin-top:var(--e4)}
+.campo label{font-family:var(--f-display);font-weight:600;font-size:var(--t-s)}
+textarea,input[type=text]{width:100%;font:inherit;font-size:var(--t-s);color:var(--tinta);background:var(--hoja);border:1px solid var(--gris2);border-radius:var(--radio);padding:var(--e2) var(--e3)}
+textarea{min-height:5.5rem;resize:vertical}
+.fila-btn{display:flex;flex-wrap:wrap;gap:var(--e3);margin-top:var(--e4);align-items:center}
+.nota{font-size:var(--t-s);color:var(--gris)}
+
+/* Contraste hipótesis vs. proceso formal (E2) */
+.contraste{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--e4);margin-bottom:var(--e5)}
+.col-con{border:1px solid var(--linea);padding:var(--e4);min-width:0}
+.col-con ol{margin:var(--e2) 0 0;padding-left:1.3rem;font-size:var(--t-s);display:grid;gap:.3rem}
+.col-con li.coincide::marker{color:var(--ok);font-weight:700}
+.reactivos{display:grid;gap:var(--e4)}
+.reactivo{border-top:1px solid var(--linea);padding-top:var(--e4)}
+.reactivo .situacion{font-style:italic;margin-bottom:var(--e3);max-width:65ch}
+.opciones{display:flex;flex-wrap:wrap;gap:var(--e2)}
+.opcion{font-family:var(--f-display);font-weight:600;font-size:var(--t-s);border:1px solid var(--gris2);background:var(--hoja);color:var(--tinta);padding:.5rem .8rem;border-radius:var(--radio);cursor:pointer;text-align:left}
+.opcion[aria-pressed="true"]{border-color:var(--azul);box-shadow:inset 0 0 0 1px var(--azul)}
+.opcion.correcta{border-color:var(--ok);background:var(--ok-suave)}
+.opcion.correcta::before{content:"✓ ";color:var(--ok)}
+.def{margin-top:var(--e3);border-left:4px solid var(--azul);background:var(--azul-suave);padding:var(--e3) var(--e4);font-size:var(--t-s)}
+.def b{font-family:var(--f-display)}
+.def .fuente{display:block;margin-top:var(--e1);font-family:var(--f-dato);font-size:.72rem;color:var(--gris)}
+
+/* Panel de refuerzo */
+.refuerzo{margin-top:var(--e3);border:1px solid var(--aviso);background:var(--aviso-suave);padding:var(--e3) var(--e4);font-size:var(--t-s);display:grid;gap:.35rem}
+.refuerzo .pausa{font-family:var(--f-display);font-weight:700;color:var(--aviso)}
+.refuerzo span b{font-family:var(--f-dato);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;margin-right:.35rem}
+.acierto{margin-top:var(--e3);border:1px solid var(--ok);background:var(--ok-suave);padding:var(--e3) var(--e4);font-size:var(--t-s)}
+.acierto::before{content:"✓ Correcto. ";font-family:var(--f-display);font-weight:700;color:var(--ok)}
+
+/* Simulador (E3) */
+.simulador{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:var(--e5);align-items:start}
+.panel-pliego{border:1px solid var(--linea);padding:var(--e4);position:sticky;top:7.5rem}
+.panel-pliego svg{width:100%;height:auto;display:block}
+.panel-pliego .hoja-f{fill:var(--papel);stroke:var(--gris2)}
+.panel-pliego .forma{fill:var(--azul-suave);stroke:var(--azul)}
+.panel-pliego text{font-family:var(--f-dato);font-size:11px;fill:var(--gris)}
+.lectura{display:grid;grid-template-columns:auto 1fr;gap:.15rem var(--e3);margin-top:var(--e3);font-family:var(--f-dato);font-size:var(--t-xs)}
+.lectura dt{color:var(--gris)} .lectura dd{margin:0;font-variant-numeric:tabular-nums}
+.pregunta{border:1px solid var(--linea);padding:var(--e4);margin-bottom:var(--e4)}
+.pregunta h3{font-size:var(--t-m);margin-bottom:var(--e2)}
+.pregunta .num{font-family:var(--f-dato);color:var(--azul);margin-right:.4rem}
+.radio-op{display:flex;gap:var(--e3);align-items:flex-start;padding:var(--e2) var(--e3);border:1px solid var(--linea);border-radius:var(--radio);margin-top:var(--e2);cursor:pointer;font-size:var(--t-s)}
+.radio-op input{margin-top:.3rem;accent-color:var(--azul)}
+.radio-op.marcada-ok{border-color:var(--ok);background:var(--ok-suave)}
+
+/* Anagrama (E4) */
+.anagrama{display:grid;gap:var(--e4)}
+.pista-ana{font-size:var(--t-m);max-width:60ch}
+.ranuras,.fichas-letra{display:flex;flex-wrap:wrap;gap:var(--e2)}
+.ranura,.letra{width:2.6rem;height:3rem;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:1.4rem;border-radius:var(--radio)}
+.ranura{border:2px dashed var(--gris2);background:var(--papel);cursor:pointer;color:var(--tinta)}
+.ranura.llena{border-style:solid;border-color:var(--azul);background:var(--azul-suave)}
+.letra{border:2px solid var(--tinta);background:var(--hoja);color:var(--tinta);cursor:pointer}
+.letra[disabled]{opacity:.2;cursor:default}
+.ana-meta{display:flex;flex-wrap:wrap;gap:var(--e4);align-items:center;font-family:var(--f-dato);font-size:var(--t-xs);color:var(--gris)}
+.interruptor{display:inline-flex;gap:var(--e2);align-items:center;cursor:pointer}
+
+/* Transferencia (E5) */
+.autoeval{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--e2);margin-top:var(--e2)}
+.resumen{margin-top:var(--e4);font-family:var(--f-dato);font-size:var(--t-xs);white-space:pre-wrap;background:var(--papel);border:1px solid var(--linea);padding:var(--e4);max-height:18rem;overflow:auto}
+
+/* Glosario */
+.glos-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:10}
+dialog{border:1px solid var(--linea);background:var(--hoja);color:var(--tinta);max-width:min(640px,calc(100vw - 32px));width:100%;padding:var(--e5);border-radius:var(--radio)}
+dialog::backdrop{background:rgba(17,22,27,.55)}
+.glos-lista{display:grid;gap:var(--e3);margin-top:var(--e4);max-height:55vh;overflow:auto}
+.glos-item h4{font-family:var(--f-display);margin:0;font-size:var(--t-m)}
+.glos-item p{font-size:var(--t-s)}
+.glos-item.resaltado{outline:2px solid var(--amarillo);outline-offset:4px}
+.glosario-link{color:var(--azul);text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+
+/* Panel docente */
+details.docente{margin-top:var(--e7);border:1px solid var(--linea);background:var(--hoja);padding:var(--e4)}
+details.docente summary{cursor:pointer;font-family:var(--f-display);font-weight:700}
+.docente h3{margin-top:var(--e5);font-size:var(--t-m)}
+.docente p,.docente li{font-size:var(--t-s);max-width:75ch}
+.tabla-scroll{overflow-x:auto;margin-top:var(--e2)}
+table{border-collapse:collapse;font-size:var(--t-xs);min-width:560px;width:100%}
+th,td{border:1px solid var(--linea);padding:.35rem .5rem;text-align:left;vertical-align:top}
+th{font-family:var(--f-dato);font-weight:600;background:var(--papel)}
+.muestra{display:inline-block;width:1.1rem;height:1.1rem;border:1px solid var(--gris2);vertical-align:middle}
+
+.logo-placa{background:#ffffff;border-radius:var(--radio);padding:.35rem .6rem;display:inline-flex;line-height:0}
+.logo-placa img{height:44px;width:auto;display:block}
+.registro{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:var(--e5);align-items:start;background:var(--hoja);border:1px solid var(--linea);border-top:4px solid var(--amarillo);padding:clamp(1rem,3vw,1.75rem);margin-bottom:var(--e5)}
+.registro form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--e3) var(--e4);align-items:end}
+.registro .campo{margin-top:0}
+.msg-campo{font-family:var(--f-dato);font-size:.72rem;min-height:1.1em;color:var(--aviso)}
+.msg-campo.ok{color:var(--ok)}
+input[aria-invalid="true"]{border-color:var(--aviso)}
+.saludo{font-family:var(--f-display);font-weight:700;color:var(--azul)}
+.bloqueado .estacion{opacity:.5;pointer-events:none;user-select:none}
+.aviso-bloqueo{font-family:var(--f-dato);font-size:var(--t-xs);background:var(--amarillo-suave);border:1px solid var(--amarillo);padding:var(--e2) var(--e3);margin-top:var(--e5)}
+.escena3d{position:relative;width:100%;aspect-ratio:4/3;max-width:100%;background:linear-gradient(var(--papel),var(--hoja));border:1px solid var(--linea);touch-action:none;cursor:grab}
+.escena3d:active{cursor:grabbing}
+.escena3d canvas{display:block;width:100%!important;height:100%!important}
+.leyenda3d{position:absolute;left:8px;bottom:6px;font-family:var(--f-dato);font-size:.68rem;color:var(--gris);pointer-events:none}
+.vistas{display:flex;flex-wrap:wrap;gap:var(--e1);margin-top:var(--e2)}
+.vistas button{font-family:var(--f-dato);font-size:.72rem;border:1px solid var(--linea);background:var(--hoja);color:var(--tinta);padding:.3rem .5rem;border-radius:var(--radio);cursor:pointer}
+.vistas button:hover,.vistas button[aria-pressed="true"]{border-color:var(--azul);color:var(--azul)}
+.reporte-btns{display:flex;flex-wrap:wrap;gap:var(--e2)}
+footer.pie{margin-top:var(--e7);padding-block:var(--e4);border-top:3px solid var(--azul);font-size:var(--t-s);color:var(--gris);display:flex;flex-wrap:wrap;gap:var(--e3);justify-content:space-between}
+
+@media (max-width:760px){
+  .registro{grid-template-columns:minmax(0,1fr)}
+  .heroe,.caso,.contraste,.simulador{grid-template-columns:minmax(0,1fr)}
+  .panel-pliego{position:static}
+  .ranura,.letra{width:2.2rem;height:2.6rem;font-size:1.2rem}
+  .medallas{display:none}
+  .glos-btn{padding:.4rem .7rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+</head>
+<body>
+<div class="marco">
+  <header class="inst">
+    <div class="marca">
+      <span class="logo-placa"><img src="data:image/jpeg;base64,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" alt="idc diseño &amp; comunicación, Instituto de Educación Superior Público" id="logoIDC" width="117" height="44"></span>
+      <small>Programa de estudios de Diseño Publicitario</small>
+    </div>
+    <nav class="nav" aria-label="Estaciones">
+      <a href="#e1">1 Hipótesis</a><a href="#e2">2 Nomenclatura</a><a href="#e3">3 Mini-caso</a><a href="#e4">4 Anagrama</a><a href="#e5">5 Transferencia</a>
+    </nav>
+  </header>
+
+  <section class="heroe" aria-labelledby="titulo">
+    <div>
+      <p class="rotulo">Actividad 3 · Sesión 6 · Producción y publicación de piezas gráficas</p>
+      <h1 id="titulo">Del archivo <em>al pliego</em></h1>
+      <p class="bajada">Ya describiste con tus palabras cómo se imprime un volante. Ahora pon nombre técnico a cada paso y comprueba tu hipótesis con un pedido real de imprenta.</p>
+      <div class="mision">
+        <div><b>Reto</b><span>Ordenar el proceso, nombrarlo y resolver 4 decisiones de producción.</span></div>
+        <div><b>Tiempo</b><span class="dato">35 a 40 min, en pareja o individual</span></div>
+        <div><b>Entregas</b><span>Reporte en PDF o Markdown de la estación 5, subido a Google Classroom.</span></div>
+      </div>
+    </div>
+    <svg class="pliego-fig" viewBox="0 0 460 372" role="img" aria-label="Pliego de 450 por 320 milímetros con cuatro volantes A5 impuestos, sangrado de 2 milímetros y marcas de corte">
+      <rect class="hoja-f" x="5" y="5" width="450" height="320"/>
+      <g id="formasHeroe"></g>
+      <text x="5" y="344">PLIEGO 450 × 320 mm · 4 × A5 CON SANGRADO DE 2 mm</text>
+      <g id="tiraHeroe"></g>
+    </svg>
+  </section>
+
+  <section class="registro" id="registro" aria-labelledby="regT">
+    <div>
+      <p class="rotulo">Antes de empezar</p>
+      <h2 id="regT" style="font-size:var(--t-l);margin-top:.25rem">Registro del estudiante</h2>
+      <p class="nota" style="margin-top:.5rem">Tu nombre y correo aparecen en el reporte PDF y Markdown de la actividad. Los datos solo se guardan mientras la página está abierta.</p>
+      <p class="saludo" id="saludo" hidden></p>
+    </div>
+    <form id="formReg" novalidate>
+      <div class="campo"><label for="regNombres">Nombres</label><input type="text" id="regNombres" autocomplete="given-name" maxlength="60" aria-describedby="msgNombres"><span class="msg-campo" id="msgNombres" aria-live="polite"></span></div>
+      <div class="campo"><label for="regApellidos">Apellidos</label><input type="text" id="regApellidos" autocomplete="family-name" maxlength="60" aria-describedby="msgApellidos"><span class="msg-campo" id="msgApellidos" aria-live="polite"></span></div>
+      <div class="campo"><label for="regCorreo">Correo electrónico</label><input type="email" id="regCorreo" autocomplete="email" inputmode="email" maxlength="120" aria-describedby="msgCorreo"><span class="msg-campo" id="msgCorreo" aria-live="polite"></span></div>
+      <div class="fila-btn" style="margin-top:0"><button class="btn btn-accion" id="btnReg" type="submit" disabled>Registrarme y empezar</button></div>
+    </form>
+  </section>
+
+  <div class="control" role="status" aria-live="polite">
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <div class="parches" aria-hidden="true">
+        <span class="parche" data-t="c" id="p1"></span><span class="parche" data-t="m" id="p2"></span><span class="parche" data-t="y" id="p3"></span><span class="parche" data-t="k" id="p4"></span><span class="parche" data-t="r" id="p5"></span>
+      </div>
+      <span class="progreso-txt" id="progresoTxt">0 de 5 estaciones completas</span>
+    </div>
+    <div class="medallas" id="medallas"></div>
+  </div>
+
+  <div class="ficha" aria-label="Datos de la sesión">
+    <div><p class="rotulo">Programa</p><p>Diseño Publicitario</p></div>
+    <div><p class="rotulo">Indicador de logro</p><p>Elige formatos según canal de difusión</p></div>
+    <div><p class="rotulo">Fase del ciclo</p><p>OR → CA → EA</p></div>
+    <div><p class="rotulo">Uso de IA</p><p>Nivel 1 — sin IA. Responde con lo que observas y razonas en clase.</p></div>
+  </div>
+
+  <div id="actividad" class="bloqueado">
+  <p class="aviso-bloqueo" id="avisoBloqueo">Completa el registro para activar las estaciones.</p>
+  <!-- E1 -->
+  <section class="estacion" id="e1" aria-labelledby="e1t">
+    <div class="est-cab"><h2 id="e1t">Tu hipótesis del proceso</h2><span class="fase">Estación 1 · OR</span></div>
+    <p class="consigna">Lee el pedido. Antes de ver ningún término técnico, <strong>ordena los cinco pasos</strong> tal como crees que ocurren en la imprenta. Usa las flechas. No hay respuesta incorrecta en esta estación: es tu punto de partida.</p>
+    <div class="caso">
+      <div class="orden-trabajo">
+        <p class="rotulo">Orden de trabajo N.º 0412 · caso de práctica</p>
+        <dl>
+          <dt>Cliente</dt><dd>Cafetería Grano Norte (ficticia)</dd>
+          <dt>Pieza</dt><dd>Volante A5, 148 × 210 mm</dd>
+          <dt>Cantidad</dt><dd class="dato">2 000 unidades</dd>
+          <dt>Color</dt><dd>4/4: a todo color por ambas caras</dd>
+          <dt>Papel</dt><dd>Estucado mate 300 g</dd>
+          <dt>Acabados</dt><dd>Laminado mate, barniz UV selectivo en el logo, esquinas redondeadas con troquel</dd>
+          <dt>Sistema</dt><dd>Offset</dd>
+        </dl>
+      </div>
+      <ol class="lista-orden" id="listaOrden" aria-label="Pasos a ordenar"></ol>
+    </div>
+    <div class="campo">
+      <label for="hipotesis">En una o dos frases: ¿qué paso crees que decide cuántos volantes salen de cada hoja?</label>
+      <textarea id="hipotesis" maxlength="400"></textarea>
+    </div>
+    <div class="fila-btn">
+      <button class="btn btn-accion" id="fijarHip" type="button">Fijar mi hipótesis</button>
+      <span class="nota" id="notaHip">Tu orden se compara con el proceso formal en la estación 2.</span>
+    </div>
+  </section>
+
+  <!-- E2 -->
+  <section class="estacion" id="e2" aria-labelledby="e2t">
+    <div class="est-cab"><h2 id="e2t">Contrasta con la nomenclatura formal</h2><span class="fase">Estación 2 · CA</span></div>
+    <p class="consigna">A la izquierda, tu orden. A la derecha, el orden con el que trabaja una imprenta offset. Después, <strong>elige el término técnico</strong> que nombra cada situación. La definición se abre al acertar.</p>
+    <div class="contraste">
+      <div class="col-con"><p class="rotulo">Tu hipótesis</p><ol id="olHip"><li>Fija tu hipótesis en la estación 1.</li></ol></div>
+      <div class="col-con"><p class="rotulo">Proceso formal</p><ol id="olFormal"></ol></div>
+    </div>
+    <p class="nota" id="coincidencias"></p>
+    <div class="reactivos" id="reactivos"></div>
+  </section>
+
+  <!-- E3 -->
+  <section class="estacion" id="e3" aria-labelledby="e3t">
+    <div class="est-cab"><h2 id="e3t">Mini-caso: la orden 0412 en producción</h2><span class="fase">Estación 3 · EA</span></div>
+    <p class="consigna">Eres el enlace entre el diseñador y la imprenta. Responde las <strong>4 preguntas cerradas</strong>. La vista 3D de la hoja de producción cambia con tus respuestas: arrástrala para girarla y usa la rueda o dos dedos para acercarte. Confirma cada respuesta para ver la retroalimentación.</p>
+    <div class="simulador">
+      <div class="panel-pliego">
+        <p class="rotulo">Hoja de producción</p>
+        <div class="escena3d" id="escena3d" role="img" aria-label="Vista 3D manipulable del pliego, las planchas, la pila del tiraje y los acabados" hidden><span class="leyenda3d" id="leyenda3d">Arrastra para girar</span></div>
+        <div class="vistas" id="vistas" hidden>
+          <button type="button" data-v="pliego" aria-pressed="true">Pliego</button>
+          <button type="button" data-v="planchas" aria-pressed="false">Planchas</button>
+          <button type="button" data-v="pila" aria-pressed="false">Pila</button>
+          <button type="button" data-v="acabados" aria-pressed="false">Acabados</button>
+          <button type="button" id="girar" aria-pressed="false">Girar solo</button>
+        </div>
+        <svg viewBox="0 0 460 330" role="img" aria-label="Vista del pliego del caso" id="svgSim">
+          <rect class="hoja-f" x="5" y="5" width="450" height="320"/>
+          <g id="formasSim"></g>
+        </svg>
+        <dl class="lectura">
+          <dt>Volantes por pliego</dt><dd id="lPorPliego">—</dd>
+          <dt>Planchas</dt><dd id="lPlanchas">—</dd>
+          <dt>Pliegos para el tiraje</dt><dd id="lPliegos">—</dd>
+          <dt>Secuencia de acabados</dt><dd id="lAcabados">—</dd>
+        </dl>
+      </div>
+      <div id="preguntas"></div>
+    </div>
+  </section>
+
+  <!-- E4 -->
+  <section class="estacion" id="e4" aria-labelledby="e4t">
+    <div class="est-cab"><h2 id="e4t">Anagrama de taller</h2><span class="fase">Estación 4 · CA</span></div>
+    <p class="consigna">Reconstruye el término. Toca las letras en orden; toca una casilla llena para devolver su letra. Tres palabras del proceso, una por ronda.</p>
+    <div class="anagrama">
+      <div class="ana-meta">
+        <span id="anaRonda">Ronda 1 de 3</span>
+        <label class="interruptor"><input type="checkbox" id="conTiempo"> Jugar con tiempo (60 s)</label>
+        <span id="reloj" hidden></span>
+      </div>
+      <p class="pista-ana" id="anaPista"></p>
+      <div class="ranuras" id="ranuras" aria-label="Respuesta"></div>
+      <div class="fichas-letra" id="fichas" aria-label="Letras disponibles"></div>
+      <div class="fila-btn">
+        <button class="btn btn-accion" id="anaComprobar" type="button">Comprobar</button>
+        <button class="btn btn-sec" id="anaPistaBtn" type="button">Pedir pista</button>
+        <button class="btn btn-sec" id="anaLimpiar" type="button">Limpiar</button>
+      </div>
+      <div id="anaFeedback" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- E5 -->
+  <section class="estacion" id="e5" aria-labelledby="e5t">
+    <div class="est-cab"><h2 id="e5t">Transferencia: otro pedido, otra decisión</h2><span class="fase">Estación 5 · EA</span></div>
+    <p class="consigna">Un restaurante pide <strong>50 menús</strong> A4 a todo color, uno por mesa, para una semana de degustación. ¿Qué sistema recomiendas?</p>
+    <div id="transfer"></div>
+    <div class="campo">
+      <label for="cambio">Compara tu hipótesis inicial con el proceso formal: ¿qué paso ubicaste distinto y por qué crees que va en otro lugar?</label>
+      <textarea id="cambio" maxlength="500"></textarea>
+    </div>
+    <div class="campo">
+      <label for="duda">Dos hallazgos y una duda sobre el proceso de impresión</label>
+      <textarea id="duda" maxlength="500"></textarea>
+    </div>
+    <p class="campo" style="margin-top:1rem"><span style="font-family:var(--f-display);font-weight:600;font-size:var(--t-s)">¿Cómo describirías tu dominio de la nomenclatura hoy?</span></p>
+    <div class="autoeval" id="autoeval" role="radiogroup" aria-label="Autoevaluación"></div>
+    <div class="fila-btn">
+      <button class="btn btn-accion" id="generar" type="button">Generar reporte</button>
+      <span class="reporte-btns">
+        <button class="btn btn-sec" id="btnPDF" type="button" disabled>Descargar PDF</button>
+        <button class="btn btn-sec" id="btnMD" type="button" disabled>Descargar Markdown</button>
+        <button class="btn btn-sec" id="copiar" type="button" disabled>Copiar texto</button>
+      </span>
+      <span class="nota" id="notaCopia"></span>
+    </div>
+    <pre class="resumen" id="resumen" hidden></pre>
+  </section>
+
+  </div>
+
+
+  <footer class="pie">
+    <span>Mg. Mario Quiroz Martinez — Unidad didáctica Producción y publicación de piezas gráficas</span>
+    <span>Instituto de Educación Superior Pública Diseño y Comunicación · 2026</span>
+  </footer>
+</div>
+
+<button class="btn btn-sec glos-btn" id="abrirGlos" type="button" style="background:var(--hoja)">Glosario</button>
+<dialog id="glosario" aria-labelledby="glosTit">
+  <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center">
+    <h2 id="glosTit" style="font-size:var(--t-l)">Glosario de producción</h2>
+    <button class="btn" id="cerrarGlos" type="button">Cerrar</button>
+  </div>
+  <div class="campo"><label for="buscaGlos">Buscar término</label><input type="text" id="buscaGlos" autocomplete="off"></div>
+  <div class="glos-lista" id="glosLista"></div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var FUENTE_GUIA = 'Guía de preimpresión emelar.es (S01.s1)';
+
+  /* ---------- Glosario: única fuente de definiciones ---------- */
+  var GLOS = {
+    plancha:{t:'Plancha', d:'Lámina metálica, generalmente de aleación de aluminio, que lleva la imagen de un solo color. En offset toma la tinta en las zonas de imagen y repele la tinta donde se moja con agua. Se usa una plancha por color y por cara impresa.', f:FUENTE_GUIA+', entrada «offset»'},
+    entintado:{t:'Entintado', d:'Aplicación de la tinta, generalmente oleosa, sobre la plancha. En offset la imagen entintada pasa a una mantilla de caucho y de ella al papel por presión.', f:FUENTE_GUIA+', entrada «offset»'},
+    cuatricromia:{t:'Cuatricromía (CMYK)', d:'Reproducción del color con cuatro tintas: cian, magenta, amarillo y negro. El archivo final se entrega en CMYK; en papel estucado la suma de las cuatro tintas no debe superar el 300 %.', f:FUENTE_GUIA+', glosario y p. 19'},
+    pliego:{t:'Pliego', d:'Hoja de papel de formato mayor que la pieza, sobre la que se imprimen varias piezas o páginas a la vez antes del corte o del plegado.', f:'Definición de la actividad'},
+    tiraje:{t:'Tiraje', d:'Número de ejemplares que se imprimen de una pieza en una misma orden de producción. Determina cuántos pliegos se imprimen y si conviene un sistema con planchas.', f:'Definición de la actividad'},
+    imposicion:{t:'Imposición', d:'Distribución de las piezas o páginas sobre el pliego, con su sangrado y marcas, para que después de imprimir, cortar o plegar queden en el orden y la posición correctos. En catálogos, el número de páginas es múltiplo de 4.', f:FUENTE_GUIA+', pp. 23 y 26'},
+    acabados:{t:'Acabados', d:'Últimas operaciones que dan al impreso su forma definitiva: plegado, corte, grapado, encuadernado, laminado, barnizado o troquelado.', f:FUENTE_GUIA+', glosario'},
+    barniz:{t:'Barniz selectivo', d:'Capa transparente aplicada solo en algunas zonas para destacarlas. Se prepara en un archivo aparte con negro al 100 % en las zonas a barnizar; no se aplica a líneas menores de 0,5 pt ni a textos menores de 7 pt.', f:FUENTE_GUIA+', p. 25'},
+    laminado:{t:'Laminado', d:'Película plástica, brillante o mate, adherida sobre el impreso para protegerlo. La guía lo llama plastificado y advierte que modifica el resultado de los colores.', f:FUENTE_GUIA+', p. 5'},
+    troquelado:{t:'Troquelado', d:'Corte con forma especial mediante un troquel. En el archivo, las líneas de corte van continuas y las de hendido discontinuas, con un grosor de 0,25 pt.', f:FUENTE_GUIA+', p. 25'},
+    sangrado:{t:'Sangrado', d:'Extensión del fondo o de la imagen fuera del formato final, como mínimo 2 mm, para evitar bordes blancos en el corte.', f:FUENTE_GUIA+', p. 16'}
+  };
+
+  /* ---------- Estado en memoria ---------- */
+  var estado = { hip:null, hipTexto:'', e2:{}, e2intentos:{}, e3:{}, e3intentos:{}, ana:[], anaPistas:0, transfer:null, auto:null, hechas:{} };
+
+  /* ---------- Figuras del pliego ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, txt){ var n=document.createElementNS(NS,tag); for(var k in attrs){ n.setAttribute(k,attrs[k]); } if(txt){ n.textContent=txt; } return n; }
+  function dibujarFormas(g, n, conMarcas){
+    while(g.firstChild){ g.removeChild(g.firstChild); }
+    // A5 con sangrado: 152 x 214 mm; 2 en ancho x ... pliego 450 x 320 (escala 1:1 en unidades)
+    var pos = [];
+    if(n===4){ pos=[[9,9,214,152],[227,9,214,152],[9,165,214,152],[227,165,214,152]]; }
+    for(var i=0;i<pos.length;i++){
+      var p=pos[i];
+      g.appendChild(el('rect',{'class':'forma',x:p[0],y:p[1],width:p[2],height:p[3]}));
+      g.appendChild(el('rect',{'class':'sangre',x:p[0]+2,y:p[1]+2,width:p[2]-4,height:p[3]-4}));
+      g.appendChild(el('text',{'class':'t-forma',x:p[0]+10,y:p[1]+24},'A5 · '+(i+1)));
+      if(conMarcas){
+        var c=[[p[0],p[1]],[p[0]+p[2],p[1]],[p[0],p[1]+p[3]],[p[0]+p[2],p[1]+p[3]]];
+        for(var j=0;j<c.length;j++){
+          g.appendChild(el('line',{'class':'corte',x1:c[j][0]-5,y1:c[j][1],x2:c[j][0]+5,y2:c[j][1]}));
+          g.appendChild(el('line',{'class':'corte',x1:c[j][0],y1:c[j][1]-5,x2:c[j][0],y2:c[j][1]+5}));
+        }
+      }
+    }
+  }
+  dibujarFormas($('formasHeroe'),4,true);
+  (function(){ var g=$('tiraHeroe'), cols=['var(--c)','var(--m)','var(--y)','var(--k)'];
+    for(var i=0;i<16;i++){ g.appendChild(el('rect',{x:5+i*12,y:352,width:11,height:12,style:'fill:'+cols[i%4]})); } })();
+
+  /* ---------- Progreso y sellos ---------- */
+  var SELLOS = [['e1','Hipótesis fijada'],['e2','Nomenclatura'],['e3','Orden en producción'],['e4','Vocabulario'],['e5','Transferencia']];
+  function completar(id){
+    if(estado.hechas[id]){ return; }
+    estado.hechas[id]=true; pintarProgreso();
+  }
+  function pintarProgreso(){
+    var n=0, m=$('medallas'); m.innerHTML='';
+    for(var i=0;i<SELLOS.length;i++){
+      var ok=!!estado.hechas[SELLOS[i][0]]; if(ok){ n++; }
+      $('p'+(i+1)).className='parche'+(ok?' lleno':'');
+      var s=document.createElement('span'); s.className='medalla'+(ok?' ok':''); s.textContent=(ok?'✓ ':'')+SELLOS[i][1]; m.appendChild(s);
+    }
+    $('progresoTxt').textContent=n+' de 5 estaciones completas';
+  }
+  pintarProgreso();
+
+  /* ---------- Panel de refuerzo ---------- */
+  function panelRefuerzo(cont, r){
+    cont.innerHTML='';
+    var d=document.createElement('div'); d.className='refuerzo'; d.setAttribute('role','status');
+    d.innerHTML='<span class="pausa">Aún no. Detente un momento.</span>'+
+      '<span><b>Pista</b>'+r.pista+'</span><span><b>Dato</b>'+r.dato+'</span><span><b>Contexto</b>'+r.contexto+'</span><span><b>Reintento</b>Vuelve a elegir con esa pista en mente.</span>';
+    cont.appendChild(d);
+  }
+  function panelAcierto(cont, txt){ cont.innerHTML=''; var d=document.createElement('div'); d.className='acierto'; d.textContent=txt; cont.appendChild(d); }
+
+  /* ---------- E1: ordenar hipótesis ---------- */
+  var PASOS = [
+    {id:'sep', txt:'Separar la imagen en los colores con los que se va a imprimir'},
+    {id:'aco', txt:'Acomodar varias copias del volante en una hoja grande'},
+    {id:'lam', txt:'Grabar una lámina por cada color'},
+    {id:'tin', txt:'Pasar la tinta de cada lámina al papel, hoja tras hoja, hasta completar las copias'},
+    {id:'fin', txt:'Proteger, dar brillo, recortar la forma y separar los volantes'}
+  ];
+  var FORMAL = ['sep','aco','lam','tin','fin'];
+  var NOMBRE_FORMAL = {sep:'Archivo en cuatricromía (CMYK)', aco:'Imposición sobre el pliego', lam:'Planchas: una por color y por cara', tin:'Entintado e impresión del tiraje', fin:'Acabados y corte'};
+  var orden = ['tin','lam','fin','sep','aco'];
+  function pintarOrden(){
+    var ol=$('listaOrden'); ol.innerHTML='';
+    for(var i=0;i<orden.length;i++){
+      var p=PASOS.filter(function(x){return x.id===orden[i];})[0];
+      var li=document.createElement('li'); li.className='item-orden';
+      li.innerHTML='<span class="n dato">'+(i+1)+'</span><span>'+p.txt+'</span>';
+      var f=document.createElement('span'); f.className='flechas';
+      var up=document.createElement('button'); up.type='button'; up.textContent='↑'; up.setAttribute('aria-label','Subir: '+p.txt); up.disabled=(i===0);
+      var dn=document.createElement('button'); dn.type='button'; dn.textContent='↓'; dn.setAttribute('aria-label','Bajar: '+p.txt); dn.disabled=(i===orden.length-1);
+      (function(ix){ up.onclick=function(){ mover(ix,-1); }; dn.onclick=function(){ mover(ix,1); }; })(i);
+      f.appendChild(up); f.appendChild(dn); li.appendChild(f); ol.appendChild(li);
+    }
+  }
+  function mover(i,d){ var j=i+d; if(j<0||j>=orden.length){return;} var t=orden[i]; orden[i]=orden[j]; orden[j]=t; pintarOrden(); var b=$('listaOrden').querySelectorAll('button')[j*2+(d<0?0:1)]; if(b&&!b.disabled){b.focus();} }
+  pintarOrden();
+  $('fijarHip').onclick=function(){
+    estado.hip=orden.slice(); estado.hipTexto=$('hipotesis').value.trim();
+    var ol=$('olHip'); ol.innerHTML=''; var coinc=0;
+    for(var i=0;i<estado.hip.length;i++){
+      var p=PASOS.filter(function(x){return x.id===estado.hip[i];})[0];
+      var li=document.createElement('li'); li.textContent=p.txt;
+      if(estado.hip[i]===FORMAL[i]){ li.className='coincide'; li.textContent+=' (✓ misma posición)'; coinc++; }
+      ol.appendChild(li);
+    }
+    $('coincidencias').textContent='Coincides con el proceso formal en '+coinc+' de 5 posiciones. Las diferencias son el material de tu reflexión final.';
+    $('notaHip').textContent='Hipótesis fijada. Puedes reordenar y volver a fijarla.';
+    completar('e1');
+  };
+  (function(){ var ol=$('olFormal'); for(var i=0;i<FORMAL.length;i++){ var li=document.createElement('li'); li.textContent=NOMBRE_FORMAL[FORMAL[i]]; ol.appendChild(li);} })();
+
+  /* ---------- E2: situación → término ---------- */
+  var REACT = [
+    {id:'r1', sit:'«Separar la imagen en los colores con los que se va a imprimir»: el archivo del volante se convierte a cuatro tintas de proceso.', ops:['cuatricromia','Pantone','RGB'], ok:'cuatricromia',
+      r:{pista:'Busca el nombre del sistema de cuatro tintas que usa la imprenta.', dato:'RGB es para pantalla y no es apto para impresión; Pantone es una tinta directa ya mezclada.', contexto:'Un amarillo creado en RGB con algo de azul se imprime verdoso al convertirse.'}},
+    {id:'r2', sit:'«Acomodar varias copias del volante en una hoja grande», con sangrado y marcas de corte, antes de grabar nada.', ops:['imposicion','maquetación','troquelado'], ok:'imposicion',
+      r:{pista:'La palabra describe dónde se colocan las piezas sobre la hoja de impresión.', dato:'La maquetación ordena los elementos dentro de una sola pieza; aquí se ordenan piezas completas sobre la hoja.', contexto:'De esta decisión depende cuántos volantes salen de cada hoja.'}},
+    {id:'r3', sit:'La hoja grande de papel sobre la que se imprimen las cuatro copias del volante a la vez.', ops:['pliego','formato','plancha'], ok:'pliego',
+      r:{pista:'Es papel, no metal, y es mayor que la pieza terminada.', dato:'El formato es la medida final de la pieza (A5); la plancha es la lámina metálica.', contexto:'Las imprentas cotizan y compran papel por hojas de este tipo.'}},
+    {id:'r4', sit:'«Grabar una lámina por cada color»: cuatro láminas de aluminio para la cara del volante.', ops:['plancha','mantilla','fotolito'], ok:'plancha',
+      r:{pista:'Es la pieza metálica que lleva la imagen de un solo color.', dato:'La mantilla es el caucho que recibe la imagen de la lámina y la pasa al papel.', contexto:'Cada cara a cuatro colores necesita cuatro de estas láminas.'}},
+    {id:'r5', sit:'En la máquina, la tinta oleosa se deposita sobre las zonas de imagen de cada lámina y se transfiere al papel por presión.', ops:['entintado','sobreimpresión','sangrado'], ok:'entintado',
+      r:{pista:'Describe la acción de cargar la tinta en la lámina.', dato:'La sobreimpresión es el solapamiento de dos colores; el sangrado es la extensión de 2 mm fuera del corte.', contexto:'Es el paso que se repite por cada hoja que pasa por la máquina.'}},
+    {id:'r6', sit:'La cantidad total de volantes que el cliente encarga: 2 000 unidades.', ops:['tiraje','pliego','formato'], ok:'tiraje',
+      r:{pista:'Es un número de ejemplares, no una medida ni una hoja.', dato:'El pliego es la hoja; el formato es la medida A5.', contexto:'Con cantidades pequeñas, este número puede hacer que no convenga usar láminas.'}},
+    {id:'r7', sit:'«Proteger, dar brillo, recortar la forma»: laminado mate, barniz UV en el logo y esquinas redondeadas.', ops:['acabados','preimpresión','imposición'], ok:'acabados',
+      r:{pista:'Son las operaciones finales, después de imprimir.', dato:'La preimpresión ocurre antes de imprimir: archivo, color, imposición.', contexto:'Cada una exige preparar algo en el archivo: el barniz necesita un archivo aparte y el troquel, sus líneas de corte.'}}
+  ];
+  function etiqueta(k){ return GLOS[k]? GLOS[k].t : k.charAt(0).toUpperCase()+k.slice(1); }
+  function barajar(a){ var b=a.slice(); for(var i=b.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=b[i]; b[i]=b[j]; b[j]=t; } return b; }
+  function pintarReactivos(){
+    var c=$('reactivos');
+    REACT.forEach(function(rx, ix){
+      var d=document.createElement('div'); d.className='reactivo';
+      d.innerHTML='<p class="rotulo">Situación '+(ix+1)+' de '+REACT.length+'</p><p class="situacion">'+rx.sit+'</p>';
+      var ops=document.createElement('div'); ops.className='opciones'; ops.setAttribute('role','group');
+      var fb=document.createElement('div'); fb.setAttribute('aria-live','polite');
+      var sel=null;
+      barajar(rx.ops).forEach(function(o){
+        var b=document.createElement('button'); b.type='button'; b.className='opcion'; b.textContent=etiqueta(o); b.setAttribute('aria-pressed','false');
+        b.onclick=function(){
+          if(estado.e2[rx.id]){ return; }
+          sel=o; Array.prototype.forEach.call(ops.children,function(x){ if(x.tagName==='BUTTON'){ x.setAttribute('aria-pressed', x===b?'true':'false'); } });
+          conf.disabled=false;
+        };
+        ops.appendChild(b);
+      });
+      var conf=document.createElement('button'); conf.type='button'; conf.className='btn btn-sec'; conf.textContent='Confirmar'; conf.disabled=true; conf.style.marginLeft='auto';
+      conf.onclick=function(){
+        if(!sel){ return; }
+        estado.e2intentos[rx.id]=(estado.e2intentos[rx.id]||0)+1;
+        if(sel===rx.ok){
+          estado.e2[rx.id]=true; conf.disabled=true;
+          Array.prototype.forEach.call(ops.children,function(x){ if(x.textContent===etiqueta(rx.ok)){ x.className='opcion correcta'; } x.disabled=true; });
+          var g=GLOS[rx.ok]; fb.innerHTML='';
+          var df=document.createElement('div'); df.className='def';
+          df.innerHTML='<b>'+g.t+'.</b> '+g.d+'<span class="fuente">Fuente: '+g.f+'</span>';
+          fb.appendChild(df);
+          if(Object.keys(estado.e2).length===REACT.length){ completar('e2'); }
+        } else { panelRefuerzo(fb, rx.r); }
+      };
+      ops.appendChild(conf);
+      d.appendChild(ops); d.appendChild(fb); c.appendChild(d);
+    });
+  }
+  pintarReactivos();
+
+  /* ---------- E3: mini-caso de 4 preguntas ---------- */
+  var PREG = [
+    {id:'q1', t:'Imposición', enun:'El pliego mide 450 × 320 mm. Cada volante A5 con 2 mm de sangrado por lado ocupa 152 × 214 mm. ¿Cuántos volantes caben por cara del pliego?',
+      ops:[['2','2 volantes'],['4','4 volantes'],['6','6 volantes']], ok:'4',
+      r:{pista:'Prueba girando el volante: 214 mm en el lado de 450 y 152 mm en el lado de 320.', dato:'450 ÷ 214 = 2,1 y 320 ÷ 152 = 2,1: entran 2 × 2. Sin girar, 450 ÷ 152 = 2,9 y 320 ÷ 214 = 1,5: solo 2.', contexto:'El sangrado mínimo de 2 mm por lado se suma a la medida final; la guía lo exige para evitar bordes blancos.'},
+      ok_txt:'La imposición girada aprovecha el pliego: 4 volantes por cara.'},
+    {id:'q2', t:'Planchas', enun:'El volante es 4/4 en cuatricromía y la imprenta usa una forma distinta para la cara y para el dorso. ¿Cuántas planchas necesita?',
+      ops:[['4','4 planchas'],['5','5 planchas'],['8','8 planchas']], ok:'8',
+      r:{pista:'Cuenta las tintas de la cara y luego las del dorso.', dato:'Cuatricromía = 4 tintas (C, M, Y, K). Una plancha por tinta y por forma.', contexto:'Con 4 planchas solo se imprime una cara; un trabajo 4/1 necesitaría 5.'},
+      ok_txt:'4 tintas × 2 formas (cara y dorso) = 8 planchas.'},
+    {id:'q3', t:'Pliegos del tiraje', enun:'El tiraje es de 2 000 volantes y salen 4 por pliego. Sin contar la merma de arranque, ¿cuántos pliegos se imprimen?',
+      ops:[['500','500 pliegos'],['2000','2 000 pliegos'],['8000','8 000 pliegos']], ok:'500',
+      r:{pista:'Divide el tiraje entre las piezas por pliego.', dato:'2 000 ÷ 4 = 500. Cada pliego se imprime por ambas caras.', contexto:'En la práctica la imprenta suma pliegos de merma para ajustar color y registro.'},
+      ok_txt:'2 000 ÷ 4 = 500 pliegos, impresos por cara y dorso.'},
+    {id:'q4', t:'Acabados', enun:'Los acabados son laminado mate, barniz UV selectivo en el logo y esquinas redondeadas con troquel. ¿En qué orden se aplican sobre los pliegos impresos?',
+      ops:[['a','Troquelado → barniz UV selectivo → laminado mate'],['b','Laminado mate → barniz UV selectivo → troquelado'],['c','Barniz UV selectivo → troquelado → laminado mate']], ok:'b',
+      r:{pista:'El barniz debe quedar visible encima de todo, y el corte con forma separa las piezas.', dato:'Si se lamina sobre el barniz, la película lo cubre; si se troquela primero, ya no hay pliego entero para laminar y barnizar.', contexto:'El barniz selectivo se entrega en un archivo aparte con negro 100 % y sin textos menores de 7 pt.'},
+      ok_txt:'Laminado, luego barniz selectivo sobre la película, y al final el troquel que da la forma.'}
+  ];
+  function pintarPreguntas(){
+    var c=$('preguntas');
+    PREG.forEach(function(q, ix){
+      var d=document.createElement('div'); d.className='pregunta';
+      d.innerHTML='<h3><span class="num">'+(ix+1)+'/4</span>'+q.t+'</h3><p style="font-size:var(--t-s)">'+q.enun+'</p>';
+      var fs=document.createElement('div'); fs.setAttribute('role','radiogroup'); fs.setAttribute('aria-label',q.t);
+      q.ops.forEach(function(o){
+        var lab=document.createElement('label'); lab.className='radio-op';
+        var inp=document.createElement('input'); inp.type='radio'; inp.name=q.id; inp.value=o[0]; inp.id=q.id+'_'+o[0];
+        lab.appendChild(inp); var s=document.createElement('span'); s.textContent=o[1]; lab.appendChild(s); fs.appendChild(lab);
+      });
+      var fila=document.createElement('div'); fila.className='fila-btn';
+      var b=document.createElement('button'); b.type='button'; b.className='btn btn-sec'; b.textContent='Confirmar respuesta';
+      var fb=document.createElement('div'); fb.setAttribute('aria-live','polite');
+      b.onclick=function(){
+        if(estado.e3[q.id]){ return; }
+        var m=fs.querySelector('input:checked'); if(!m){ fb.innerHTML='<p class="nota">Elige una opción antes de confirmar.</p>'; return; }
+        estado.e3intentos[q.id]=(estado.e3intentos[q.id]||0)+1;
+        if(m.value===q.ok){
+          estado.e3[q.id]=m.value; b.disabled=true;
+          Array.prototype.forEach.call(fs.querySelectorAll('input'),function(x){ x.disabled=true; if(x.checked){ x.parentNode.className='radio-op marcada-ok'; } });
+          panelAcierto(fb,q.ok_txt); actualizarPliego(); avisar3D(q.id);
+          if(Object.keys(estado.e3).length===4){ completar('e3'); }
+        } else { panelRefuerzo(fb,q.r); }
+      };
+      fila.appendChild(b); d.appendChild(fs); d.appendChild(fila); d.appendChild(fb); c.appendChild(d);
+    });
+  }
+  function actualizarPliego(){
+    dibujarFormas($('formasSim'), estado.e3.q1?4:0, true);
+    $('lPorPliego').textContent = estado.e3.q1 ? '4 (girados)' : '—';
+    $('lPlanchas').textContent = estado.e3.q2 ? '8 (CMYK × cara y dorso)' : '—';
+    $('lPliegos').textContent = estado.e3.q3 ? '500 + merma' : '—';
+    $('lAcabados').textContent = estado.e3.q4 ? 'laminado → barniz → troquel' : '—';
+  }
+  function avisar3D(id){ if(V3 && V3[id]){ V3[id](); } }
+  pintarPreguntas(); actualizarPliego();
+
+  /* ---------- E4: anagrama ---------- */
+  var PAL = [
+    {w:'PLANCHA', p:'Lámina metálica que lleva la imagen de un solo color.', p2:'Empieza con P y tiene 7 letras.', p3:'P _ _ N _ H A'},
+    {w:'TIRAJE', p:'Número de ejemplares de una orden de producción.', p2:'Empieza con T y tiene 6 letras.', p3:'T _ R _ J E'},
+    {w:'IMPOSICIÓN', p:'Distribución de las piezas sobre el pliego antes de imprimir.', p2:'Empieza con I, tiene 10 letras y lleva tilde.', p3:'I M _ O _ I C _ Ó N'}
+  ];
+  var ronda=0, fichas=[], puestas=[], timer=null, restante=60;
+  function iniciarRonda(){
+    var w=PAL[ronda].w.split(''); fichas=barajar(w.map(function(ch,i){return {ch:ch,i:i};}));
+    if(fichas.map(function(f){return f.ch;}).join('')===PAL[ronda].w){ fichas.reverse(); }
+    puestas=[]; estado.anaPistasRonda=0;
+    $('anaRonda').textContent='Ronda '+(ronda+1)+' de 3'; $('anaPista').textContent='Pista: '+PAL[ronda].p; $('anaFeedback').innerHTML='';
+    pintarAna(); reiniciarReloj();
+  }
+  function pintarAna(){
+    var r=$('ranuras'), f=$('fichas'); r.innerHTML=''; f.innerHTML='';
+    for(var i=0;i<PAL[ronda].w.length;i++){
+      var s=document.createElement('button'); s.type='button'; s.className='ranura'+(puestas[i]?' llena':''); s.textContent=puestas[i]?puestas[i].ch:'';
+      s.setAttribute('aria-label', puestas[i]? 'Casilla '+(i+1)+': '+puestas[i].ch+'. Toca para devolver' : 'Casilla '+(i+1)+' vacía');
+      (function(ix){ s.onclick=function(){ if(puestas[ix]){ puestas.splice(ix,1); pintarAna(); } }; })(i);
+      r.appendChild(s);
+    }
+    fichas.forEach(function(fi){
+      var b=document.createElement('button'); b.type='button'; b.className='letra'; b.textContent=fi.ch;
+      var usada=puestas.indexOf(fi)>=0; b.disabled=usada; b.setAttribute('aria-label','Letra '+fi.ch);
+      b.onclick=function(){ if(puestas.length<PAL[ronda].w.length){ puestas.push(fi); pintarAna(); } };
+      f.appendChild(b);
+    });
+  }
+  function reiniciarReloj(){
+    if(timer){ clearInterval(timer); timer=null; }
+    var r=$('reloj');
+    if(!$('conTiempo').checked){ r.hidden=true; return; }
+    restante=60; r.hidden=false; r.textContent='Tiempo: 60 s';
+    timer=setInterval(function(){ restante--; r.textContent='Tiempo: '+restante+' s';
+      if(restante<=0){ clearInterval(timer); timer=null; r.textContent='Tiempo cumplido: sigue sin reloj, tu respuesta cuenta igual.'; } },1000);
+  }
+  $('conTiempo').onchange=reiniciarReloj;
+  $('anaLimpiar').onclick=function(){ puestas=[]; pintarAna(); };
+  $('anaPistaBtn').onclick=function(){
+    estado.anaPistas++; estado.anaPistasRonda=(estado.anaPistasRonda||0)+1;
+    var p=PAL[ronda]; $('anaPista').textContent='Pista: '+p.p+' '+(estado.anaPistasRonda===1?p.p2:p.p2+' Forma: '+p.p3);
+  };
+  $('anaComprobar').onclick=function(){
+    var w=PAL[ronda].w, intento=puestas.map(function(f){return f.ch;}).join('');
+    if(intento.length<w.length){ $('anaFeedback').innerHTML='<p class="nota">Completa las '+w.length+' casillas antes de comprobar.</p>'; return; }
+    if(intento===w){
+      if(timer){ clearInterval(timer); timer=null; }
+      estado.ana.push(w);
+      var clave={PLANCHA:'plancha',TIRAJE:'tiraje','IMPOSICIÓN':'imposicion'}[w];
+      var g=GLOS[clave]; var fb=$('anaFeedback'); fb.innerHTML='';
+      var a=document.createElement('div'); a.className='acierto'; a.textContent=g.t+': '+g.d; fb.appendChild(a);
+      var b=document.createElement('button'); b.type='button'; b.className='btn btn-accion'; b.style.marginTop='.75rem';
+      if(ronda<PAL.length-1){ b.textContent='Siguiente palabra'; b.onclick=function(){ ronda++; iniciarRonda(); }; }
+      else { b.textContent='Completaste las 3 palabras'; b.disabled=true; completar('e4'); }
+      fb.appendChild(b);
+    } else {
+      var pos=0; for(var i=0;i<w.length;i++){ if(intento[i]===w[i]){ pos++; } }
+      panelRefuerzo($('anaFeedback'),{pista:'Tienes '+pos+' de '+w.length+' letras en su lugar.', dato:PAL[ronda].p, contexto:'Este término aparece en la orden 0412 de las estaciones 2 y 3.'});
+    }
+  };
+  iniciarRonda();
+
+  /* ---------- E5: transferencia y resumen ---------- */
+  var TOPS=[
+    ['offset','Offset: 4 planchas por cara y el mismo proceso que la orden 0412'],
+    ['digital','Impresión digital: sin planchas, el archivo va directo a la máquina'],
+    ['serigrafia','Serigrafía: una malla por color sobre el papel']
+  ];
+  (function(){
+    var c=$('transfer'), fs=document.createElement('div'); fs.setAttribute('role','radiogroup'); fs.setAttribute('aria-label','Sistema recomendado');
+    TOPS.forEach(function(o){ var lab=document.createElement('label'); lab.className='radio-op'; var i=document.createElement('input'); i.type='radio'; i.name='tr'; i.value=o[0]; i.id='tr_'+o[0]; lab.appendChild(i); var s=document.createElement('span'); s.textContent=o[1]; lab.appendChild(s); fs.appendChild(lab); });
+    var fila=document.createElement('div'); fila.className='fila-btn'; var b=document.createElement('button'); b.type='button'; b.className='btn btn-sec'; b.textContent='Confirmar recomendación';
+    var fb=document.createElement('div'); fb.setAttribute('aria-live','polite');
+    b.onclick=function(){
+      var m=fs.querySelector('input:checked'); if(!m){ fb.innerHTML='<p class="nota">Elige un sistema antes de confirmar.</p>'; return; }
+      if(m.value==='digital'){ estado.transfer='digital'; b.disabled=true; panelAcierto(fb,'Con un tiraje de 50 menús, grabar planchas y ajustar la máquina cuesta más que imprimir directo desde el archivo. El tiraje cambió la decisión, no la pieza.'); revisarE5(); }
+      else { panelRefuerzo(fb,{pista:'Compara el tiraje de este pedido con el de la orden 0412.', dato:'El offset necesita planchas y pliegos de merma antes del primer ejemplar válido; la guía lo describe como un sistema de calidad a coste relativamente bajo cuando el volumen lo justifica.', contexto:'Elegir sistema según cantidad y plazo es parte de elegir formato según canal de difusión.'}); }
+    };
+    fila.appendChild(b); c.appendChild(fs); c.appendChild(fila); c.appendChild(fb);
+    var niveles=[['inicio','Reconozco algunos términos'],['proceso','Uso los términos con ayuda del glosario'],['logrado','Explico el proceso con los términos correctos']];
+    niveles.forEach(function(n){ var lab=document.createElement('label'); lab.className='radio-op'; var i=document.createElement('input'); i.type='radio'; i.name='auto'; i.value=n[0]; i.id='auto_'+n[0]; i.onchange=function(){ estado.auto=n[1]; revisarE5(); }; lab.appendChild(i); var s=document.createElement('span'); s.textContent=n[1]; lab.appendChild(s); $('autoeval').appendChild(lab); });
+  })();
+  function revisarE5(){ if(estado.transfer && estado.auto && $('cambio').value.trim().length>10){ completar('e5'); } }
+  $('cambio').oninput=revisarE5;
+
+  /* ---------- Registro ---------- */
+  var RE_NOM=/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]{2,60}$/;
+  function validar(inp,msg){
+    var v=inp.value.trim().replace(/\s+/g,' '), ok=RE_NOM.test(v);
+    inp.setAttribute('aria-invalid', v && !ok ? 'true':'false');
+    msg.className='msg-campo'+(ok?' ok':'');
+    msg.textContent = !v ? '' : (ok ? '✓ Válido' : 'Usa solo letras y espacios, mínimo 2 caracteres.');
+    return ok;
+  }
+  var RE_MAIL=/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+  function validarCorreo(){ var inp=$('regCorreo'), msg=$('msgCorreo'), v=inp.value.trim(), ok=RE_MAIL.test(v);
+    inp.setAttribute('aria-invalid', v && !ok ? 'true':'false'); msg.className='msg-campo'+(ok?' ok':'');
+    msg.textContent = !v ? '' : (ok ? '✓ Válido' : 'Escribe un correo con el formato nombre@dominio.com.'); return ok; }
+  function revisarReg(){ var a=validar($('regNombres'),$('msgNombres')), b=validar($('regApellidos'),$('msgApellidos')), c=validarCorreo(); $('btnReg').disabled=!(a&&b&&c); return a&&b&&c; }
+  $('regNombres').oninput=revisarReg; $('regApellidos').oninput=revisarReg; $('regCorreo').oninput=revisarReg;
+  $('formReg').addEventListener('submit',function(e){
+    e.preventDefault(); if(!revisarReg()){ return; }
+    estado.nombres=$('regNombres').value.trim().replace(/\s+/g,' ');
+    estado.apellidos=$('regApellidos').value.trim().replace(/\s+/g,' ');
+    estado.correo=$('regCorreo').value.trim().toLowerCase();
+    estado.inicio=new Date();
+    var s=$('saludo'); s.hidden=false; s.textContent='Registrado: '+estado.nombres+' '+estado.apellidos+' ('+estado.correo+'). Empieza por la estación 1.';
+    $('actividad').className=''; $('avisoBloqueo').hidden=true; $('btnReg').textContent='Actualizar nombre';
+    var e1=$('e1'); if(e1.scrollIntoView){ e1.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}); }
+  });
+
+  /* ---------- Reporte (Markdown y PDF) ---------- */
+  function prim(obj,ints){ var n=0; for(var k in obj){ if(ints[k]===1){ n++; } } return n; }
+  function fecha(d){ function z(n){return (n<10?'0':'')+n;} return z(d.getDate())+'/'+z(d.getMonth()+1)+'/'+d.getFullYear()+' '+z(d.getHours())+':'+z(d.getMinutes()); }
+  function datosReporte(){
+    var hip = estado.hip ? estado.hip.map(function(id,i){ return (i+1)+'. '+PASOS.filter(function(p){return p.id===id;})[0].txt; }) : [];
+    var e2=REACT.map(function(r,i){ var g=GLOS[r.ok]; return {n:i+1, termino:g.t, ok:!!estado.e2[r.id], intentos:estado.e2intentos[r.id]||0}; });
+    var e3=PREG.map(function(q,i){ var op=q.ops.filter(function(o){return o[0]===estado.e3[q.id];})[0]; return {n:i+1, tema:q.t, resp: op?op[1]:'sin respuesta correcta', intentos:estado.e3intentos[q.id]||0}; });
+    return {
+      alumno: (estado.nombres||'(sin registro)')+' '+(estado.apellidos||''),
+      correo: estado.correo||'(sin registro)',
+      fecha: fecha(new Date()), inicio: estado.inicio?fecha(estado.inicio):'—',
+      completas: Object.keys(estado.hechas).length,
+      hip: hip, hipTexto: estado.hipTexto,
+      coinc: estado.hip ? estado.hip.filter(function(id,i){return id===FORMAL[i];}).length : 0,
+      e2: e2, e2ok:Object.keys(estado.e2).length, e2prim:prim(estado.e2,estado.e2intentos),
+      e3: e3, e3ok:Object.keys(estado.e3).length, e3prim:prim(estado.e3,estado.e3intentos),
+      ana: estado.ana.slice(), pistas: estado.anaPistas,
+      transfer: estado.transfer==='digital'?'Impresión digital (correcta)':'Sin respuesta correcta aún',
+      cambio: $('cambio').value.trim(), duda: $('duda').value.trim(), auto: estado.auto||'(pendiente)'
+    };
+  }
+  function aMarkdown(d){
+    var L=[];
+    L.push('# Reporte de actividad: Del archivo al pliego','');
+    L.push('| Campo | Dato |','|---|---|');
+    L.push('| Estudiante | '+d.alumno+' |','| Correo | '+d.correo+' |','| Programa | Diseño Publicitario |','| Sesión | 1 |','| Actividad | 3 |','| Indicador de logro | Elige formatos según canal de difusión |','| Inicio | '+d.inicio+' |','| Reporte generado | '+d.fecha+' |','| Estaciones completas | '+d.completas+' de 5 |','');
+    L.push('## 1. Hipótesis del proceso','');
+    if(d.hip.length){ d.hip.forEach(function(h){ L.push(h); }); } else { L.push('(sin fijar)'); }
+    L.push('','Coincidencias con el proceso formal: '+d.coinc+' de 5.');
+    if(d.hipTexto){ L.push('','Hipótesis escrita: '+d.hipTexto); }
+    L.push('','## 2. Nomenclatura formal','','| N.º | Término | Logrado | Intentos |','|---|---|---|---|');
+    d.e2.forEach(function(r){ L.push('| '+r.n+' | '+r.termino+' | '+(r.ok?'Sí':'No')+' | '+r.intentos+' |'); });
+    L.push('','Términos logrados: '+d.e2ok+' de 7; al primer intento: '+d.e2prim+'.');
+    L.push('','## 3. Mini-caso de producción','','| N.º | Decisión | Respuesta | Intentos |','|---|---|---|---|');
+    d.e3.forEach(function(r){ L.push('| '+r.n+' | '+r.tema+' | '+r.resp+' | '+r.intentos+' |'); });
+    L.push('','Decisiones logradas: '+d.e3ok+' de 4; al primer intento: '+d.e3prim+'.');
+    L.push('','## 4. Anagrama','','Palabras reconstruidas: '+(d.ana.join(', ')||'ninguna')+'. Pistas usadas: '+d.pistas+'.');
+    L.push('','## 5. Transferencia y reflexión','','Sistema para 50 menús: '+d.transfer+'.','','**Qué cambió respecto a mi hipótesis:** '+(d.cambio||'(pendiente)'),'','**Dos hallazgos y una duda:** '+(d.duda||'(pendiente)'),'','**Autoevaluación:** '+d.auto,'');
+    L.push('---','Mg. Mario Quiroz Martinez — Unidad didáctica Producción y publicación de piezas gráficas · IDC');
+    return L.join('\n');
+  }
+  function nombreArchivo(ext){ var n=((estado.apellidos||'estudiante')+'_'+(estado.nombres||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,''); return 'Reporte_S01_A03_Del_archivo_al_pliego_'+n+'.'+ext; }
+  function guardarArchivo(nombre, data, mime){
+    var nota=$('notaCopia');
+    function local(){
+      try{ var blob = data instanceof Blob ? data : new Blob([data],{type:mime}); var url=URL.createObjectURL(blob);
+        var a=document.createElement('a'); a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); },1500);
+        nota.textContent='Archivo generado: '+nombre;
+      }catch(err){ nota.textContent='El navegador no permitió la descarga. Usa «Copiar texto».'; }
+    }
+    if(window.claude && window.claude.use){
+      window.claude.use('downloads').then(function(dl){
+        if(!dl){ local(); return; }
+        dl.save({filename:nombre, data:data}).then(function(){ nota.textContent='Reporte guardado: '+nombre; },
+          function(e){ nota.textContent = (e&&e.code==='declined') ? 'Descarga cancelada.' : 'La descarga no está disponible en esta vista. Usa «Copiar texto».'; });
+      }, local);
+    } else { local(); }
+  }
+  function pdfTexto(t){ return String(t).replace(/→/g,'->').replace(/[✓]/g,'').replace(/[«»]/g,'"').replace(/[–—]/g,'-'); }
+  function aPDF(d){
+    var J = window.jspdf && window.jspdf.jsPDF; if(!J){ return null; }
+    var doc=new J({unit:'mm',format:'a4'}), x=18, y=16, ancho=174;
+    var azul=[0,114,185], gris=[85,85,83];
+    try{ doc.addImage($('logoIDC').src,'JPEG',x,y,44,16.5); }catch(e){}
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(azul[0],azul[1],azul[2]);
+    doc.text('Reporte de actividad: Del archivo al pliego', x, y+26);
+    doc.setDrawColor(243,161,0); doc.setLineWidth(1); doc.line(x,y+29,x+ancho,y+29);
+    y+=36;
+    function linea(et,val){ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(gris[0],gris[1],gris[2]); doc.text(pdfTexto(et),x,y);
+      doc.setFont('helvetica','normal'); doc.setTextColor(27,33,38); var w=doc.splitTextToSize(pdfTexto(val),ancho-48); doc.text(w,x+48,y); y+=5.2*w.length+1; }
+    function titulo(t){ if(y>265){ doc.addPage(); y=18; } y+=3; doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(azul[0],azul[1],azul[2]); doc.text(pdfTexto(t),x,y); y+=6; }
+    function parrafo(t){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(27,33,38); var w=doc.splitTextToSize(pdfTexto(t),ancho); if(y+5*w.length>282){ doc.addPage(); y=18; } doc.text(w,x,y); y+=5*w.length+1.5; }
+    linea('Estudiante',d.alumno); linea('Correo',d.correo); linea('Programa','Diseño Publicitario · Sesión 1 · Actividad 3'); linea('Indicador de logro','Elige formatos según canal de difusión');
+    linea('Inicio / reporte',d.inicio+' / '+d.fecha); linea('Estaciones completas',d.completas+' de 5');
+    titulo('1. Hipótesis del proceso'); (d.hip.length?d.hip:['(sin fijar)']).forEach(parrafo); parrafo('Coincidencias con el proceso formal: '+d.coinc+' de 5.'); if(d.hipTexto){ parrafo('Hipótesis escrita: '+d.hipTexto); }
+    titulo('2. Nomenclatura formal'); d.e2.forEach(function(r){ parrafo(r.n+'. '+r.termino+' - '+(r.ok?'logrado':'pendiente')+' ('+r.intentos+' intento'+(r.intentos===1?'':'s')+')'); });
+    parrafo('Términos logrados: '+d.e2ok+' de 7; al primer intento: '+d.e2prim+'.');
+    titulo('3. Mini-caso de producción'); d.e3.forEach(function(r){ parrafo(r.n+'. '+r.tema+': '+r.resp+' ('+r.intentos+' intento'+(r.intentos===1?'':'s')+')'); });
+    parrafo('Decisiones logradas: '+d.e3ok+' de 4; al primer intento: '+d.e3prim+'.');
+    titulo('4. Anagrama'); parrafo('Palabras reconstruidas: '+(d.ana.join(', ')||'ninguna')+'. Pistas usadas: '+d.pistas+'.');
+    titulo('5. Transferencia y reflexión'); parrafo('Sistema para 50 menús: '+d.transfer+'.');
+    parrafo('Qué cambió respecto a mi hipótesis: '+(d.cambio||'(pendiente)')); parrafo('Dos hallazgos y una duda: '+(d.duda||'(pendiente)')); parrafo('Autoevaluación: '+d.auto);
+    var n=doc.getNumberOfPages(); for(var i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(gris[0],gris[1],gris[2]);
+      doc.text(pdfTexto('Mg. Mario Quiroz Martinez — Unidad didáctica Producción y publicación de piezas gráficas · IDC · página '+i+' de '+n), x, 290); }
+    return doc.output('blob');
+  }
+  var ultimoMD='';
+  $('generar').onclick=function(){
+    revisarE5();
+    var d=datosReporte(); ultimoMD=aMarkdown(d);
+    var pre=$('resumen'); pre.textContent=ultimoMD; pre.hidden=false;
+    $('copiar').disabled=false; $('btnMD').disabled=false; $('btnPDF').disabled=!(window.jspdf&&window.jspdf.jsPDF);
+    $('notaCopia').textContent = estado.nombres ? 'Reporte listo. Descárgalo en PDF o Markdown y súbelo a Google Classroom.' : 'Regístrate arriba para que tu nombre aparezca en el reporte.';
+  };
+  $('btnMD').onclick=function(){ guardarArchivo(nombreArchivo('md'), aMarkdown(datosReporte()), 'text/markdown'); };
+  $('btnPDF').onclick=function(){ var b=aPDF(datosReporte()); if(!b){ $('notaCopia').textContent='El generador de PDF no cargó (requiere conexión). Usa Markdown.'; return; } guardarArchivo(nombreArchivo('pdf'), b, 'application/pdf'); };
+  $('copiar').onclick=function(){
+    var t=$('resumen').textContent;
+    function seleccionar(){ var r=document.createRange(); r.selectNodeContents($('resumen')); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); $('notaCopia').textContent='Texto seleccionado: usa Ctrl+C o Copiar del menú.'; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){ $('notaCopia').textContent='Reporte copiado.'; }, seleccionar);
+    } else { seleccionar(); }
+  };
+
+  /* ---------- Vista 3D (Three.js r128 + Anime.js v3) ---------- */
+  var V3 = null;
+  function iniciar3D(){
+    if(!window.THREE){ return; }
+    var T=window.THREE, cont=$('escena3d');
+    try{
+      var test=document.createElement('canvas'); if(!(test.getContext('webgl')||test.getContext('experimental-webgl'))){ return; }
+    }catch(e){ return; }
+    cont.hidden=false; $('vistas').hidden=false; $('svgSim').style.display='none';
+    var reducir=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var css=getComputedStyle(document.documentElement);
+    function tok(n){ return new T.Color(css.getPropertyValue(n).trim()||'#888888'); }
+    var renderer=new T.WebGLRenderer({alpha:true, antialias:true, preserveDrawingBuffer:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); renderer.shadowMap.enabled=true;
+    cont.insertBefore(renderer.domElement, cont.firstChild);
+    var scene=new T.Scene();
+    var camera=new T.PerspectiveCamera(40,4/3,0.1,100); camera.position.set(0,6.2,7.2);
+    var controls = T.OrbitControls ? new T.OrbitControls(camera, renderer.domElement) : null;
+    if(controls){ controls.enableDamping=true; controls.target.set(0,0.3,0); controls.minDistance=3; controls.maxDistance=16; controls.maxPolarAngle=Math.PI*0.49; controls.autoRotateSpeed=1.2; }
+    else { camera.lookAt(0,0.3,0); }
+    scene.add(new T.AmbientLight(0xffffff,0.55));
+    var luz=new T.DirectionalLight(0xffffff,0.85); luz.position.set(4,9,5); luz.castShadow=true; luz.shadow.mapSize.set(1024,1024);
+    luz.shadow.camera.left=-7; luz.shadow.camera.right=7; luz.shadow.camera.top=7; luz.shadow.camera.bottom=-7; scene.add(luz);
+    var suelo=new T.Mesh(new T.PlaneGeometry(16,16), new T.MeshLambertMaterial({color:tok('--papel')})); suelo.rotation.x=-Math.PI/2; suelo.receiveShadow=true; scene.add(suelo);
+    var grid=new T.GridHelper(16,32, tok('--gris2'), tok('--linea')); grid.position.y=0.002; scene.add(grid);
+
+    function etiqueta(txt, color){
+      var c=document.createElement('canvas'); c.width=512; c.height=128; var g=c.getContext('2d');
+      g.font='700 56px Archivo, Arial, sans-serif'; g.fillStyle=color||'#1b2126'; g.textBaseline='middle'; g.fillText(txt,8,64);
+      var sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c), transparent:true, depthTest:false})); sp.scale.set(2,0.5,1); return sp;
+    }
+    // Pliego 450 x 320 mm -> 4.5 x 3.2 unidades
+    var pliego=new T.Group(); scene.add(pliego);
+    var hoja=new T.Mesh(new T.BoxGeometry(4.5,0.02,3.2), new T.MeshStandardMaterial({color:0xffffff, roughness:0.9}));
+    hoja.position.y=0.01; hoja.castShadow=true; hoja.receiveShadow=true; pliego.add(hoja);
+    // 4 volantes A5 girados (214 x 152 con sangrado)
+    var volantes=[], uv=[], pos=[[-1.09,-0.78],[1.09,-0.78],[-1.09,0.78],[1.09,0.78]];
+    var matVol=new T.MeshStandardMaterial({color:tok('--azul'), roughness:0.8, transparent:true, opacity:0.9});
+    pos.forEach(function(p,i){
+      var m=new T.Mesh(new T.BoxGeometry(2.1,0.012,1.48), matVol.clone()); m.position.set(p[0],0.026,p[1]); m.scale.set(0.001,1,0.001); m.castShadow=true; pliego.add(m); volantes.push(m);
+      var logo=new T.Mesh(new T.CylinderGeometry(0.22,0.22,0.01,32), new T.MeshStandardMaterial({color:tok('--amarillo'), roughness:0.15, metalness:0.2, transparent:true, opacity:0}));
+      logo.position.set(p[0]-0.6,0.04,p[1]-0.35); pliego.add(logo); uv.push(logo);
+    });
+    var film=new T.Mesh(new T.BoxGeometry(4.42,0.004,3.12), new T.MeshStandardMaterial({color:0xe8eef3, roughness:1, transparent:true, opacity:0}));
+    film.position.y=0.037; pliego.add(film);
+    // Planchas: 4 tintas x 2 formas
+    var planchas=new T.Group(); planchas.position.set(0,0,-3.4); scene.add(planchas);
+    var tintas=[0x00a0e3,0xe6007e,0xffe500,0x1d1d1b], listaPl=[];
+    for(var f=0; f<2; f++){ for(var t=0;t<4;t++){
+      var g=new T.Group();
+      var placa=new T.Mesh(new T.BoxGeometry(0.9,1.3,0.03), new T.MeshStandardMaterial({color:0xb9c0c6, metalness:0.75, roughness:0.35})); placa.castShadow=true;
+      var franja=new T.Mesh(new T.BoxGeometry(0.9,0.16,0.035), new T.MeshStandardMaterial({color:tintas[t], roughness:0.6})); franja.position.y=0.57;
+      g.add(placa); g.add(franja); g.position.set(-3.15+t*1.0+(f?4.3:0)*0+ (f? 0:0), 0.65, f? -1.1:0);
+      g.position.x = (f===0? -2.1 : -2.1) + t*1.0 + (f===0? 0 : 0);
+      g.position.z = f===0 ? 0 : -1.0;
+      g.scale.set(1,0.001,1); g.visible=false; planchas.add(g); listaPl.push(g);
+    }}
+    var etCara=etiqueta('CARA'), etDorso=etiqueta('DORSO'); etCara.position.set(2.8,0.8,0); etDorso.position.set(2.8,0.8,-1.0); etCara.visible=etDorso.visible=false; planchas.add(etCara); planchas.add(etDorso);
+    // Pila del tiraje: 500 pliegos de 300 g ~ 0,3 mm -> 15 cm
+    var pila=new T.Mesh(new T.BoxGeometry(4.5,1,3.2), new T.MeshStandardMaterial({color:0xf7f7f5, roughness:0.95}));
+    pila.position.set(5.6,0.0005,0); pila.scale.y=0.001; pila.castShadow=true; scene.add(pila);
+    var etPila=etiqueta('500 pliegos ≈ 15 cm'); etPila.scale.set(3.2,0.8,1); etPila.position.set(5.6,2.0,0); etPila.visible=false; scene.add(etPila);
+
+    function dim(){ var w=cont.clientWidth, h=cont.clientHeight||w*0.75; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+    dim(); if(window.ResizeObserver){ new ResizeObserver(dim).observe(cont); } else { window.addEventListener('resize',dim); }
+
+    var visible=true;
+    if(window.IntersectionObserver){ new IntersectionObserver(function(es){ visible=es[0].isIntersecting; }).observe(cont); }
+    (function loop(){ requestAnimationFrame(loop); if(!visible){ return; } if(controls){ controls.update(); } renderer.render(scene,camera); })();
+
+    function animar(o){ if(reducir || !window.anime){ var t=o.targets; for(var k in o){ if(k!=='targets'&&k!=='duration'&&k!=='easing'&&k!=='delay'&&k!=='complete'&&k!=='update'){ var v=o[k]; (Array.isArray(t)?t:[t]).forEach(function(x){ x[k]=Array.isArray(v)?v[v.length-1]:v; }); } } if(o.update){ o.update(); } if(o.complete){ o.complete(); } return; } window.anime(o); }
+    var CAM={pliego:[[0,6.2,7.2],[0,0.3,0]], planchas:[[0,3.2,4.2],[0,0.6,-3.8]], pila:[[9.5,3.6,6.0],[5.6,0.5,0]], acabados:[[0,5.0,5.6],[0,0.2,0]]};
+    function vista(v){
+      var c=CAM[v]; if(!c){ return; }
+      Array.prototype.forEach.call(document.querySelectorAll('#vistas button[data-v]'),function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-v')===v?'true':'false'); });
+      var tgt = controls ? controls.target : {x:0,y:0,z:0};
+      animar({targets:camera.position, x:c[0][0], y:c[0][1], z:c[0][2], duration:900, easing:'easeInOutSine'});
+      animar({targets:tgt, x:c[1][0], y:c[1][1], z:c[1][2], duration:900, easing:'easeInOutSine', update:function(){ if(!controls){ camera.lookAt(tgt.x,tgt.y,tgt.z); } }});
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#vistas button[data-v]'),function(b){ b.onclick=function(){ vista(b.getAttribute('data-v')); }; });
+    $('girar').onclick=function(){ if(!controls){ return; } controls.autoRotate=!controls.autoRotate; this.setAttribute('aria-pressed',controls.autoRotate?'true':'false'); };
+
+    V3={
+      q1:function(){ vista('pliego'); volantes.forEach(function(m,i){ animar({targets:m.scale, x:1, z:1, duration:600, delay:i*160, easing:'easeOutBack'}); }); $('leyenda3d').textContent='4 volantes A5 girados sobre el pliego'; },
+      q2:function(){ vista('planchas'); listaPl.forEach(function(g,i){ g.visible=true; animar({targets:g.scale, y:1, duration:500, delay:i*110, easing:'easeOutBack'}); }); etCara.visible=etDorso.visible=true; $('leyenda3d').textContent='8 planchas: C, M, Y, K para cara y dorso'; },
+      q3:function(){ vista('pila'); etPila.visible=true; animar({targets:pila.scale, y:1.5, duration:1200, easing:'easeOutQuad'}); animar({targets:pila.position, y:0.75, duration:1200, easing:'easeOutQuad'}); $('leyenda3d').textContent='Pila de 500 pliegos (escala aproximada)'; },
+      q4:function(){ vista('acabados');
+        animar({targets:film.material, opacity:0.55, duration:700, easing:'linear'});
+        uv.forEach(function(u,i){ animar({targets:u.material, opacity:1, duration:500, delay:800+i*120, easing:'linear'}); });
+        volantes.forEach(function(m,i){ var d=m.position.x>0?1:-1, e=m.position.z>0?1:-1; animar({targets:m.position, x:m.position.x+d*0.35, y:0.3, z:m.position.z+e*0.3, duration:800, delay:1600+i*100, easing:'easeOutCubic'}); });
+        uv.forEach(function(u){ var d=u.position.x+0.6>0?1:-1, e=u.position.z+0.35>0?1:-1; animar({targets:u.position, x:u.position.x+d*0.35, y:0.32, z:u.position.z+e*0.3, duration:800, delay:1600, easing:'easeOutCubic'}); });
+        $('leyenda3d').textContent='Laminado, barniz UV en el logo y troquelado';
+      }
+    };
+  }
+  iniciar3D();
+
+  /* ---------- Glosario ---------- */
+  var dlg=$('glosario');
+  function pintarGlos(filtro, resaltar){
+    var l=$('glosLista'); l.innerHTML=''; var f=(filtro||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    Object.keys(GLOS).sort(function(a,b){ return GLOS[a].t.localeCompare(GLOS[b].t,'es'); }).forEach(function(k){
+      var g=GLOS[k], plano=(g.t+' '+g.d).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      if(f && plano.indexOf(f)<0){ return; }
+      var d=document.createElement('div'); d.className='glos-item'+(k===resaltar?' resaltado':''); d.id='g_'+k;
+      d.innerHTML='<h4>'+g.t+'</h4><p>'+g.d+'</p><p class="nota" style="font-size:.75rem">'+g.f+'</p>'; l.appendChild(d);
+    });
+  }
+  function abrirGlos(k){
+    pintarGlos('',k);
+    if(dlg.showModal){ dlg.showModal(); } else { dlg.setAttribute('open',''); }
+    if(k){ var it=$('g_'+k); if(it){ it.scrollIntoView({block:'center'}); } }
+  }
+  $('abrirGlos').onclick=function(){ abrirGlos(); };
+  $('cerrarGlos').onclick=function(){ dlg.close ? dlg.close() : dlg.removeAttribute('open'); };
+  dlg.addEventListener('click',function(e){ if(e.target===dlg && dlg.close){ dlg.close(); } });
+  $('buscaGlos').oninput=function(){ pintarGlos(this.value); };
+})();
+</script>
+
+</body>
+</html>
